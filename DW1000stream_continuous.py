@@ -22,7 +22,7 @@ import sys
 import numpy as np
 
 calInfoDict = {"testType":"antDelayCal",
-               "numSamples":1,   #number of sample t
+               "numSamples":5,   #number of samples. This  influences sample buffer size of the DW1000 object.
                "numSamplesRT":1, # Display samples in realtime
                "numCalSamples":100, # Number of samples required in calibration loop
                "startDist":5, #measurement start distance
