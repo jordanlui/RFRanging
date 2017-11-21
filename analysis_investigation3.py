@@ -12,6 +12,9 @@ import glob, os
 import matplotlib.pyplot as plt
 import plotly.plotly as py
 import plotly.graph_objs as go
+from scipy import stats
+import scipy
+import math
 
 # %% Custom Functions
 from analysisFunctions import makeHeatmap
@@ -50,22 +53,22 @@ print('slope stats: mean:%.2f stdev:%.2f min:%.2f max:%.2f'%(np.mean(slopes),np.
 
 
 #%% Plot Slope data
-N = len(slopes)
-ind = np.arange(N)
+numTrials = len(slopes)
+ind = np.arange(numTrials)
 width = 0.5
 fig, ax = plt.subplots()
 rects1 = ax.bar(ind,slopes,width,color='r')
-ax.set_title('Slope values for %i Trials'%N,fontsize=16)
+ax.set_title('Slope values for %i Trials'%numTrials,fontsize=16)
 ax.set_ylabel('slope value')
 ax.set_xlabel('Trial')
 plt.show()
 
-N = len(intercepts)
-ind = np.arange(N)
+#N = len(intercepts)
+#ind = np.arange(N)
 width = 0.5
 fig, ax = plt.subplots()
 rects1 = ax.bar(ind,intercepts,width,color='r')
-ax.set_title('Intercept values for %i Trials'%N,fontsize=16)
+ax.set_title('Intercept values for %i Trials'%numTrials,fontsize=16)
 ax.set_ylabel('Intercept value, cm')
 ax.set_xlabel('Trial')
 plt.show()
@@ -79,6 +82,7 @@ np.savetxt(path+'roomScaled.csv',roomScaled,delimiter=',')
 #%% Error comparison
 errorScaled = scaled - camDistances # Error of data scaled on per-trial basis
 errorRoomAvg = roomScaled - camDistances # Error of data scaled with trial average
+errorRoomAvgRel = (roomScaled - camDistances)/camDistances # Relative error or % error
 errorRaw = raw - camDistances # Error on raw data
 maxError = np.max((errorScaled,errorRoomAvg,errorRaw)) # Max error, cm
 #print 'Error max,mean,median,min,stdev for Room Avg Scaling is %.2f,%.2f,%.2f,%.2f,%.2f'%(np.max(errorRoomAvg),np.mean(errorRoomAvg),np.median(errorRoomAvg),np.min(errorRoomAvg),np.std(errorRoomAvg))
@@ -89,15 +93,18 @@ print 'Raw: ', errorStats(np.abs(errorRaw))
 
 #%% Heatmaps - Different Scales
 
-makeHeatmap(errorScaled,distances,trialNo,'Individually Scaled',np.max(errorScaled))
-makeHeatmap(errorRoomAvg,distances,trialNo,'Scaled with Room Average',np.max(errorRoomAvg))
-makeHeatmap(errorRaw,distances,trialNo,'Raw Data',maxError)
+#makeHeatmap(errorScaled,distances,trialNo,'Individually Scaled',np.max(errorScaled))
+#makeHeatmap(errorRoomAvg,distances,trialNo,'Scaled with Room Average',np.max(errorRoomAvg))
+#makeHeatmap(errorRaw,distances,trialNo,'Raw Data',np.max(errorRaw))
 
+#makeHeatmap(errorScaled/camDistances,distances,trialNo,'Relative Individually Scaled',np.max(errorScaled))
+#makeHeatmap(errorRoomAvgRel,distances,trialNo,'Relative Scaled with Room Average',np.max(errorRoomAvgRel))
+#makeHeatmap(errorRaw/camDistances,distances,trialNo,'Relative Raw Data',np.max(errorRaw))
 
 # Heat maps - Matching Scale values
 
-makeHeatmap(errorScaled,distances,trialNo,'Individually Scaled',maxError)
-makeHeatmap(errorRoomAvg,distances,trialNo,'Scaled with Room Average',maxError)
+#makeHeatmap(errorScaled,distances,trialNo,'Individually Scaled',maxError)
+#makeHeatmap(errorRoomAvg,distances,trialNo,'Scaled with Room Average',maxError)
 #%% Histogram
 fig1 = plt.figure()
 plt.hist((errorRoomAvg),bins=3)
@@ -112,7 +119,7 @@ ind = np.arange(Ndistances) # List of indices
 width = 0.5
 fig, ax = plt.subplots()
 rects1 = ax.bar(ind,errorWDistance,width,color='r')
-ax.set_title('Error at different distances %i Trials'%N,fontsize=16)
+ax.set_title('Error at different distances %i Trials'%numTrials,fontsize=16)
 ax.set_ylabel('Average error, cm')
 ax.set_xlabel('Distance (cm)')
 ax.set_xticklabels(distances)
@@ -164,18 +171,115 @@ errorWTrials = np.mean(np.abs(errorRoomAvg),axis=0)
 
 #%% Effects of tag-anchor angle
 
-
-erroravgWAngle = np.reshape(errorRoomAvg,(288,1))
+# Write angles out as vector
+erroravgWAngle = np.copy(errorRoomAvg)
 
 Ndistances = len(erroravgWAngle)
 
 ind = np.arange(Ndistances)
 width = 0.5
 fig, ax = plt.subplots()
-rects1 = ax.scatter(angles,erroravgWAngle,width,color='r')
-ax.set_title('Error at different angles for %i Trials'%N,fontsize=16)
+rects1 = ax.scatter(angles,np.abs(erroravgWAngle),width,color='r')
+ax.set_title('Error at different angles for %i Trials'%numTrials,fontsize=16)
 ax.set_ylabel('Average error, cm')
 ax.set_xlabel('Angle')
 #ax.set_xticklabels(angleLabels)
 #ax.set_xticks(np.arange(Ndistances), minor=False)
+plt.show()
+
+# Binned values
+angles = np.reshape(angles,(len(angles),))
+#x = np.copy(angles)
+
+# Function Staging
+if erroravgWAngle.shape[1] > 1:
+	y = np.reshape(erroravgWAngle,(len(angles),))
+x = np.copy(angles)
+
+def cleanNaN(x,y):
+	newx = []
+	newy = []
+	for i,j in zip(x,y):
+		if i > 0:
+			newx.append(i)
+			newy.append(j)
+		else:
+			print 'found a NaN'
+			pass
+	x = newx
+	y = newy
+	return x,y
+
+def binPlot(x,y,bins=6):
+	# Accepts two vectors, bins the data and plots
+	# Also returns the values of the bins (x-axis)
+	if len(x) == len(y):
+		results = scipy.stats.binned_statistic(x,y,statistic='mean',bins=bins)
+
+#		N = bins
+		ind = []
+		ind2 = []
+		for i in range(len(results.bin_edges)-1):
+			ind.append(np.mean((results.bin_edges[i:i+2])))
+			ind2.append('%.0f-%.0f'%(results.bin_edges[i],results.bin_edges[i+1]))
+		ind = np.round(ind,decimals=1)
+		width = 5
+		fig, ax = plt.subplots()
+		ax.bar(ind,results.statistic,width,color='r')
+		ax.set_title('Average error at different angles %i Trials'%numTrials,fontsize=16)
+		ax.set_ylabel('Error (cm)')
+		ax.set_xlabel('Angle bin')
+		plt.show()
+		return results, ind, ind2
+	
+	
+	else:
+		print 'error! mismatch length!'
+		return
+def boxPlot(results):
+	# Box plot of data
+	data = []
+	for i in range(N): # Loop through bins
+		mask=results.binnumber-1 == i # Create mask
+		binvalues = np.ma.array(y,mask=~mask) # Grab the values for that mask
+		data.append(binvalues.compressed()) # Add values to a list
+	
+	fig,ax = plt.subplots()
+	ax.boxplot(np.abs(data),labels=ind2)
+	ax.set_title('Error at different angles')
+	plt.show()
+	return
+
+x,y = cleanNaN(x,y)
+bins = 6
+N = bins	
+results,ind,ind2 = binPlot(x,y,bins=bins) # Binned data, index midpoints, and index string names
+boxPlot(results) # Box plot of results
+
+#%% Manual bin method
+# Uses nice round numbers but this code is not currently extensible or easily customized
+bins = range(90,180)[::10]
+M = len(bins)
+errAngle = [[] for i in range(M)] # Preallocate list
+
+for i in range(len(x)): # Loop through all values
+	val = y[i]
+	angle = x[i]
+	for j in range(len(bins)-1): # Loop through bins
+		if angle < bins[0]:
+			errAngle[0].append(val)
+		elif angle > bins[-1]:
+			errAngle[-1].append(val)
+		elif angle >= bins[j] and angle < bins[j+1]:
+			errAngle[j].append(val)
+print 'check length', sum([len(row) for row in errAngle])
+
+ind = bins
+results = [np.mean(i) for i in errAngle]
+width = 7
+fig, ax = plt.subplots()
+rects1 = ax.bar(ind,results,width,color='r')
+ax.set_title('Average error at different angles %i Trials'%numTrials,fontsize=16)
+ax.set_ylabel('Error (cm)')
+ax.set_xlabel('Angle bin')
 plt.show()

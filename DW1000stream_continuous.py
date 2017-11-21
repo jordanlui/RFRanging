@@ -24,10 +24,10 @@ import numpy as np
 calInfoDict = {"testType":"antDelayCal",
                "numSamples":5,   #number of samples. This  influences sample buffer size of the DW1000 object.
                "numSamplesRT":1, # Display samples in realtime
-               "numCalSamples":100, # Number of samples required in calibration loop
+               "numCalSamples":20, # Number of samples required in calibration loop
                "startDist":5, #measurement start distance
-               "stopDist":35, #measurement stop distance
-               "stepDist":10, #measurement step distance
+               "stopDist":15, #measurement stop distance
+               "stepDist":5, #measurement step distance
                "anchorPort":"COM4", #COM port for anchor (add to GUI)
                "tagPort":"COM15", #COM port for tag (add to GUI)
                "anchorBaud":9600,  #baud rate for anchor (add to GUI)
