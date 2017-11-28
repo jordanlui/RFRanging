@@ -36,3 +36,8 @@ def makeHeatmap(data,distances,trialNo,nameOut,vmax):
 def errorStats(data):
 	output = 'Error max,mean,median,min,stdev is %.2f,%.2f,%.2f,%.2f,%.2f'%(np.max(data),np.mean(data),np.median(data),np.min(data),np.std(data))
 	return output
+
+def calcStats(x):
+	outputString = 'max %.2f, min %.2f, mean: %.2f, median: %.2f, stdev: %.2f'%(np.max((x)), np.min((x)),np.mean((x)), np.median((x)), np.std(x))
+	print outputString
+	return np.max((x)), np.min((x)),np.mean((x)), np.median((x)), np.std(x)
