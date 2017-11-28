@@ -41,3 +41,44 @@ def calcStats(x):
 	outputString = 'max %.2f, min %.2f, mean: %.2f, median: %.2f, stdev: %.2f'%(np.max((x)), np.min((x)),np.mean((x)), np.median((x)), np.std(x))
 	print outputString
 	return np.max((x)), np.min((x)),np.mean((x)), np.median((x)), np.std(x)
+
+def binPlot(x,y,bins=6, title='Binned Error'):
+	# Accepts two lists, bins the data and plots
+	# Also returns the values of the bin midpoint (ind) and a string describing bin span (ind2)
+	x,y = cleanNaN(x,y) # Remove NaN values
+	if len(x) == len(y):
+		results = scipy.stats.binned_statistic(x,y,statistic='mean',bins=bins)
+
+#		N = bins
+		ind = []
+		ind2 = []
+		for i in range(len(results.bin_edges)-1):
+			ind.append(np.mean((results.bin_edges[i:i+2])))
+			ind2.append('%.0f-%.0f'%(results.bin_edges[i],results.bin_edges[i+1]))
+		ind = np.round(ind,decimals=1)
+		width = 3
+		fig, ax = plt.subplots()
+		ax.bar(ind,results.statistic,width,color='r')
+		ax.set_title(title,fontsize=16)
+#		ax.set_ylabel('Error (cm)')
+#		ax.set_xlabel('Angle bin')
+		plt.show()
+		return results, ind, ind2
+		
+	else:
+		print 'error! mismatch length!'
+		return
+def boxPlot(results,y,title='Error at different angles'):
+	# Box plot of data that results from a binned_statistic results
+	N = len(results.statistic) # number of bins
+	data = []
+	for i in range(N): # Loop through bins
+		mask=results.binnumber-1 == i # Create mask
+		binvalues = np.ma.array(y,mask=~mask) # Grab the values for that mask
+		data.append(binvalues.compressed()) # Add values to a list
+	
+	fig,ax = plt.subplots()
+	ax.boxplot(np.abs(data),labels=ind2)
+	ax.set_title(title)
+	plt.show()
+	return fig,ax
