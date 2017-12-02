@@ -3,7 +3,8 @@
 Created on Sun Nov 05 21:20:13 2017
 
 @author: Jordan
-Results analysis on RF Results
+Results analysis on RF Results from Nov 9,10
+Includes error analysis as function of angle, distance, jitter
 """
 
 from __future__ import division
@@ -15,6 +16,7 @@ import plotly.graph_objs as go
 from scipy import stats
 import scipy
 import math
+import pandas as pd
 
 # %% Custom Functions
 from analysisFunctions import makeHeatmap, calcStats, errorStats
@@ -252,6 +254,11 @@ results,ind,ind2 = binPlot(x,y,bins=bins,title=title) # Binned data, index midpo
 fig,ax = boxPlot(results, y, title=title) # Box plot of results
 
 
+#%% Export Results
+import dill                           
+filename = 'investigation3' + '_workspace.pkl'
+dill.dump_session(filename)
+
 #%% Manual bin method
 # Uses nice round numbers but this code is not currently extensible or easily customized
 #bins = range(90,180)[::10]
@@ -280,3 +287,126 @@ fig,ax = boxPlot(results, y, title=title) # Box plot of results
 #ax.set_ylabel('Error (cm)')
 #ax.set_xlabel('Angle bin')
 #plt.show()
+
+#%% Compare error of stationary and wiggle movements (at 67.5 degrees)
+
+maskWiggle = (8,17,26,35) # Wiggle data
+maskStationary = (6,7,15,16,24,25,33,34) # Stationary 67 degrees
+errorWiggle = errorRoomAvgRel[:,maskWiggle]
+errorStationary67 = errorRoomAvgRel[:,maskStationary]
+
+print errorRoomAvg.shape, errorWiggle.shape, errorStationary67.shape
+print '\n Error Analysis between stationary and jitter data.'
+calcStats(np.abs(errorStationary67))
+calcStats(np.abs(errorWiggle))
+
+data = [[abs(i) for row in errorStationary67 for i in row],[abs(i) for row in errorWiggle for i in row]]
+title = 'Relative error for stationary and jitter movements'
+fig,ax = plt.subplots()
+ax.boxplot((data),labels=['Stationary','Jitter'])
+ax.set_title(title)
+plt.show()
+
+#  Nov 9 Data
+maskWiggle = (8,17) # Wiggle data
+maskStationary = (6,7,15,16) # Stationary 67 degrees
+errorWiggle = errorRoomAvgRel[:,maskWiggle]
+errorStationary67 = errorRoomAvgRel[:,maskStationary]
+calcStats(np.abs(errorStationary67))
+calcStats(np.abs(errorWiggle))
+
+data = [[abs(i) for row in errorStationary67 for i in row],[abs(i) for row in errorWiggle for i in row]]
+title = 'Relative error for stationary and jitter movements, Nov 9'
+fig,ax = plt.subplots()
+ax.boxplot((data),labels=['Stationary','Jitter'])
+ax.set_title(title)
+plt.show()
+
+#  Nov 10 Data
+maskWiggle = (26,35) # Wiggle data
+maskStationary = (24,25,33,34) # Stationary 67 degrees
+errorWiggle = errorRoomAvgRel[:,maskWiggle]
+errorStationary67 = errorRoomAvgRel[:,maskStationary]
+calcStats(np.abs(errorStationary67))
+calcStats(np.abs(errorWiggle))
+
+data = [[abs(i) for row in errorStationary67 for i in row],[abs(i) for row in errorWiggle for i in row]]
+title = 'Relative error for stationary and jitter movements, Nov 10'
+fig,ax = plt.subplots()
+ax.boxplot((data),labels=['Stationary','Jitter'])
+ax.set_title(title)
+plt.show()
+
+# Jordan Data
+maskWiggle = (8,26) # Wiggle data
+maskStationary = (6,7,24,25) # Stationary 67 degrees
+errorWiggleJ = errorRoomAvgRel[:,maskWiggle]
+errorStationary67J = errorRoomAvgRel[:,maskStationary]
+calcStats(np.abs(errorStationary67J))
+calcStats(np.abs(errorWiggleJ))
+
+errorStationary67J = [abs(i) for row in errorStationary67J for i in row]
+errorWiggleJ = [abs(i) for row in errorWiggleJ for i in row]
+
+dataJ = [errorStationary67J, errorWiggleJ]
+title = 'Relative error for stationary and jitter movements, Jordan'
+fig,ax = plt.subplots()
+ax.boxplot((dataJ),labels=['Stationary','Jitter'])
+ax.set_title(title)
+plt.show()
+
+# Marilyn
+maskWiggle = (17,35) # Wiggle data
+maskStationary = (15,16,33,34) # Stationary 67 degrees
+errorWiggleM = errorRoomAvgRel[:,maskWiggle]
+errorStationary67M = errorRoomAvgRel[:,maskStationary]
+calcStats(np.abs(errorStationary67M))
+calcStats(np.abs(errorWiggleM))
+errorStationary67M = [abs(i) for row in errorStationary67M for i in row]
+errorWiggleM = [abs(i) for row in errorWiggleM for i in row]
+dataM = [errorStationary67M,errorWiggleM]
+title = 'Relative error for stationary and jitter movements, Marilyn'
+fig,ax = plt.subplots()
+ax.boxplot((dataM),labels=['Stationary','Jitter'])
+ax.set_title(title)
+plt.show()
+
+#%% Cluster Bar chart
+pos = list(range(2))
+width = 0.4
+fig,ax = plt.subplots(figsize=(10,5))
+labels = ['Stationary', 'Jitter']
+plt.bar(pos,
+		[np.mean(np.abs(errorStationary67J)),np.mean(np.abs(errorStationary67M))],
+		width,
+		alpha=0.5,
+		label='Stationary'
+		)
+plt.bar([p + width for p in pos],
+		[np.mean(np.abs(errorWiggleJ)),np.mean(np.abs(errorWiggleM))],
+		width,
+		alpha = 0.5,
+		label='Jitter'
+		)
+ax.set_xlabel('Patient')
+ax.set_ylabel('Mean Percent Absolute Error')
+ax.set_xticks([p + 0.5 * width for p in pos])
+ax.set_xticklabels(['Patient1','Patient2'])
+plt.legend(labels)
+plt.show()
+
+#%% Boxplot chart
+
+# Trying to group!
+#https://stackoverflow.com/questions/16592222/matplotlib-group-boxplots
+# http://pandas.pydata.org/pandas-docs/stable/visualization.html#box-plotting
+data = dict(	JStationary = errorStationary67J,
+		JJitter = errorWiggleJ,
+		MStationary = errorStationary67M,
+		MJitter= errorWiggleM)
+data2 = dict(a = [1,2,3],b=[2,3,4],c=[5,6,7])
+
+df = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in data.iteritems()]) )
+#df['x'] = pd.Series([])
+pd.options.display.mpl_style = 'default'
+df.boxplot()
