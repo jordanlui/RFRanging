@@ -11,8 +11,8 @@ from __future__ import division
 import numpy as np
 import glob, os
 import matplotlib.pyplot as plt
-import plotly.plotly as py
-import plotly.graph_objs as go
+#import plotly.plotly as py
+#import plotly.graph_objs as go
 from scipy import stats
 import scipy
 import math
@@ -97,11 +97,11 @@ def boxPlot(results,y,title='Error at different angles'):
 
 #%% Parameters, setup, file loading
 path = '../Investigation3/'
-fileCoeff = 'coeff.csv'
-fileRaw = 'raw.csv'
-fileScaled = 'scaled.csv'
-fileCam = 'webcam_corrected.csv'
-label = 'labels.csv'
+fileCoeff = 'coeff.csv' # Coefficients for linear line fit
+fileRaw = 'raw.csv' # Original values
+fileScaled = 'scaled.csv' # Scaled values
+fileCam = 'webcam_corrected.csv' # Webcam corrected average values, where an average value was taken to fill in holes
+label = 'labels.csv' # Label data about the trial
 angles = 'angles.csv' # Actual angles between two antenna
 distances = range(5,41,5) # Distance axis
 
@@ -138,7 +138,7 @@ np.savetxt(path+'roomScaled.csv',roomScaled,delimiter=',')
 
 #%% Error comparison
 errorScaled = scaled - camDistances # Error of data scaled on per-trial basis
-errorRoomAvg = roomScaled - camDistances # Error of data scaled with trial average
+errorRoomAvg = roomScaled - camDistances # Error of data scaled against trial average
 errorRoomAvgRel = (roomScaled - camDistances)/camDistances # Relative error or % error
 errorRaw = raw - camDistances # Error on raw data
 maxError = np.max((errorScaled,errorRoomAvg,errorRaw)) # Max error, cm
@@ -149,6 +149,9 @@ print 'Individually scaled: ', errorStats(np.abs(errorScaled))
 print 'Room Avg: ', errorStats(np.abs(errorRoomAvg))
 print 'Raw: ', errorStats(np.abs(errorRaw))
 
+#%% Save data for publication in BIOROB
+np.savetxt('errorRoomAvgInv3.csv',errorRoomAvg,delimiter=',')
+np.savetxt('errorRoomAvgRelInv3.csv',errorRoomAvgRel,delimiter=',')
 #%% Heatmaps - Different Scales
 makeHeatmap(errorScaled/camDistances,distances,trialLabel,'Relative Individually Scaled',np.max(errorScaled/camDistances))
 makeHeatmap(errorRoomAvgRel,distances,trialLabel,'Relative Scaled with Room Average',np.max(errorRoomAvgRel/camDistances))
@@ -228,11 +231,15 @@ if erroravgWAngle.shape[1] > 1:
 x = np.copy(angles)
 
 x,y = cleanNaN(x,y) # Remove NaN values
-bins = 6
+bins = 7
 N = bins	
 title = 'Absolute error (cm) as a function of angle'
 results,ind,ind2 = binPlot(x,y,bins=bins,title=title) # Binned data, index midpoints, and index string names
 boxPlot(results, y, title=title) # Box plot of results
+
+# Save results to CSV File for BIOROB
+errorAngle = np.array((x,y,results[2]))
+np.savetxt('errorAngle.csv',np.transpose(errorAngle),delimiter=',')
 
 #%% Angle effects, relative error
 
@@ -247,12 +254,15 @@ y = erroravgWAngleRel
 x = angles
 
 x,y = cleanNaN(x,y) # Remove NaN values
-bins = 6
+bins = 7
 N = bins	
 title='Relative error as a function of angle'
 results,ind,ind2 = binPlot(x,y,bins=bins,title=title) # Binned data, index midpoints, and index string names
 fig,ax = boxPlot(results, y, title=title) # Box plot of results
 
+# Save results to CSV File for BIOROB
+errorAngleRel = np.array((x,y,results[2]))
+np.savetxt('errorAngleRel.csv',np.transpose(errorAngleRel),delimiter=',')
 
 #%% Export Results
 import dill                           
@@ -307,7 +317,7 @@ ax.boxplot((data),labels=['Stationary','Jitter'])
 ax.set_title(title)
 plt.show()
 
-#  Nov 9 Data
+#  Nov 9 Data only
 maskWiggle = (8,17) # Wiggle data
 maskStationary = (6,7,15,16) # Stationary 67 degrees
 errorWiggle = errorRoomAvgRel[:,maskWiggle]
@@ -322,7 +332,7 @@ ax.boxplot((data),labels=['Stationary','Jitter'])
 ax.set_title(title)
 plt.show()
 
-#  Nov 10 Data
+#  Nov 10 Data only
 maskWiggle = (26,35) # Wiggle data
 maskStationary = (24,25,33,34) # Stationary 67 degrees
 errorWiggle = errorRoomAvgRel[:,maskWiggle]
