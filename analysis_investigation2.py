@@ -3,7 +3,7 @@
 Created on Sun Nov 05 21:20:13 2017
 
 @author: Jordan
-Results analysis on RF Results
+Results analysis on RF Results on wrist. Recorded Nov 2017 with wrist mounted device
 """
 
 from __future__ import division
@@ -12,10 +12,6 @@ import glob, os
 import matplotlib.pyplot as plt
 import plotly.plotly as py
 import plotly.graph_objs as go
-import scipy
-
-# Custom Functions
-from analysisFunctions import makeHeatmap
 
 path = '../Investigation2/'
 fileCoeff = 'coeff.csv'
@@ -30,119 +26,67 @@ camDistances = np.genfromtxt(path+fileCam,delimiter=',')
 
 slopes = coeff[0,:]
 intercepts = coeff[1,:]
-numTrials = raw.shape[1] # Number of Trials
-realDistances = np.reshape(camDistances,(camDistances.shape[0]*camDistances.shape[1],1))
-realDistances = [i[0] for i in realDistances]
 
 distances = range(5,55,5) # Distance axis
 trialNo = range(1,raw.shape[1]+1)
-trialLabel = trialNo
+
 
 print('slope stats: mean:%.2f stdev:%.2f min:%.2f max:%.2f'%(np.mean(slopes),np.std(slopes),np.max(slopes),np.min(slopes)))
 
 #%% Functions
-# %% Custom Functions
-from analysisFunctions import makeHeatmap, calcStats, errorStats
+def makeHeatmap(data,distances,trialNo,nameOut,vmax):
+    data = np.abs(data)
+    fig,axis = plt.subplots()
+    heatmap = axis.pcolor(data,cmap=plt.cm.Blues,vmax=vmax)
+    axis.set_yticks(np.arange(data.shape[0])+0.5, minor=False)
+    axis.set_xticks(np.arange(data.shape[1])+0.5, minor=False)
+    plt.title('Heatmap'+nameOut)
+    plt.ylabel('Distance (cm)')
+    plt.xlabel('Trial Number')
+    axis.set_yticklabels(distances)
+    axis.set_xticklabels(trialNo)
+    plt.colorbar(heatmap)
+    plt.savefig('Heatmap'+nameOut+'.png',dpi=100)
 
-def plotSlopeIntercepts(slopes,intercepts, numTrials):
-	numTrials = len(slopes)
-	ind = np.arange(numTrials)
-	width = 0.5
-	fig, ax = plt.subplots()
-	rects1 = ax.bar(ind,slopes,width,color='r')
-	ax.set_title('Slope values for %i Trials'%numTrials,fontsize=16)
-	ax.set_ylabel('slope value')
-	ax.set_xlabel('Trial')
-	plt.show()
-	
-	width = 0.5
-	fig, ax = plt.subplots()
-	rects1 = ax.bar(ind,intercepts,width,color='r')
-	ax.set_title('Intercept values for %i Trials'%numTrials,fontsize=16)
-	ax.set_ylabel('Intercept value, cm')
-	ax.set_xlabel('Trial')
-	plt.show()
-
-def cleanNaN(x,y):
-	newx = []
-	newy = []
-	for i,j in zip(x,y):
-		if i > 0:
-			newx.append(i)
-			newy.append(j)
-		else:
-			print 'found a NaN'
-			pass
-	x = newx
-	y = newy
-	return x,y
-
-def binPlot(x,y,bins=6, title='Binned Error'):
-	# Accepts two lists, bins the data and plots
-	# Also returns the values of the bin midpoint (ind) and a string describing bin span (ind2)
-	x,y = cleanNaN(x,y) # Remove NaN values
-	if len(x) == len(y):
-		results = scipy.stats.binned_statistic(x,y,statistic='mean',bins=bins)
-
-#		N = bins
-		ind = []
-		ind2 = []
-		for i in range(len(results.bin_edges)-1):
-			ind.append(np.mean((results.bin_edges[i:i+2])))
-			ind2.append('%.0f-%.0f'%(results.bin_edges[i],results.bin_edges[i+1]))
-		ind = np.round(ind,decimals=1)
-		width = 3
-		fig, ax = plt.subplots()
-		ax.bar(ind,results.statistic,width,color='r')
-		ax.set_title(title,fontsize=16)
-#		ax.set_ylabel('Error (cm)')
-#		ax.set_xlabel('Angle bin')
-		plt.show()
-		return results, ind, ind2
-		
-	else:
-		print 'error! mismatch length!'
-		return
-def boxPlot(results,y,title='Error at different angles'):
-	# Box plot of data that results from a binned_statistic results
-	N = len(results.statistic) # number of bins
-	data = []
-	for i in range(N): # Loop through bins
-		mask=results.binnumber-1 == i # Create mask
-		binvalues = np.ma.array(y,mask=~mask) # Grab the values for that mask
-		data.append(binvalues.compressed()) # Add values to a list
-	
-	fig,ax = plt.subplots()
-	ax.boxplot(np.abs(data),labels=ind2)
-	ax.set_title(title)
-	plt.show()
-	return fig,ax
 #%% Plot Slope data
-plotSlopeIntercepts(slopes,intercepts, numTrials)
+N = len(slopes)
+ind = np.arange(N)
+width = 0.5
+fig, ax = plt.subplots()
+rects1 = ax.bar(ind,slopes,width,color='r')
+ax.set_title('Slope values for %i Trials'%N,fontsize=16)
+ax.set_ylabel('slope value')
+ax.set_xlabel('Trial')
+plt.show()
+
+N = len(intercepts)
+ind = np.arange(N)
+width = 0.5
+fig, ax = plt.subplots()
+rects1 = ax.bar(ind,intercepts,width,color='r')
+ax.set_title('Intercept values for %i Trials'%N,fontsize=16)
+ax.set_ylabel('Intercept value, cm')
+ax.set_xlabel('Trial')
+plt.show()
 
 #%% Scale Data using a room average
 avSlope = np.mean(slopes)
 avIntercept = np.mean(intercepts)
-roomScaled = (raw - avIntercept) / avSlope # Scale raw data with average trial data
+roomScaled = (raw - avIntercept) / avSlope # Scale our values with an average slope and intercept value for the N trials
 np.savetxt(path+'roomScaled.csv',roomScaled,delimiter=',')
 
 #%% Error comparison
-errorScaled = scaled - camDistances # Error of data scaled on per-trial basis
-errorRoomAvg = roomScaled - camDistances # Error of data scaled with trial average
+errorScaled = scaled - camDistances
+errorRoomAvg = roomScaled - camDistances
 errorRoomAvgRel = (roomScaled - camDistances)/camDistances # Relative error or % error
-errorRaw = raw - camDistances # Error on raw data
-maxError = np.max((errorScaled,errorRoomAvg,errorRaw)) # Max error, cm
-errorAll = np.reshape(errorRoomAvg,(errorRoomAvg.shape[0]*errorRoomAvg.shape[1]),1) # All error for room avg, cm
-errorAllRel = errorAll / realDistances
+errorRaw = raw - camDistances
+maxError = np.max((errorScaled,errorRoomAvg,errorRaw))
 
-print 'Individually scaled: ', errorStats(np.abs(errorScaled))
-print 'Room Avg: ', errorStats(np.abs(errorRoomAvg))
-print 'Raw: ', errorStats(np.abs(errorRaw))
+#%% Heatmaps
 
-#%% Heatmaps - Different Scales
-makeHeatmap(errorScaled/camDistances,distances,trialLabel,'Relative Individually Scaled',np.max(errorScaled/camDistances))
-makeHeatmap(errorRoomAvgRel,distances,trialLabel,'Relative Scaled with Room Average',np.max(errorRoomAvgRel/camDistances))
-makeHeatmap(errorRaw/camDistances,distances,trialLabel,'Relative Raw Data',np.max(errorRaw/camDistances))
+makeHeatmap(errorScaled,distances,trialNo,'Scaled',maxError)
+makeHeatmap(errorRoomAvg,distances,trialNo,'Avg',maxError)
+makeHeatmap(errorRaw,distances,trialNo,'Raw',maxError)
 
 #%% Histogram
 fig1 = plt.figure()
@@ -150,96 +94,111 @@ plt.hist((errorRoomAvg),bins=3)
 plt.title('Error Histogram')
 
 #%% Examine error with distance
-erroravgWDistance=np.mean(np.abs(errorRoomAvg),axis=1)
+errorWDistance=np.mean(np.abs(errorRoomAvg),axis=1)
 
-Ndistances = len(distances) # Number of distances
-ind = np.arange(Ndistances) # List of indices
+
+Ndistances = len(errorWDistance)
+ind = np.arange(Ndistances)
 width = 0.5
 fig, ax = plt.subplots()
-rects1 = ax.bar(ind,erroravgWDistance,width,color='r')
-ax.set_title('Error at different distances %i Trials'%numTrials,fontsize=16)
+rects1 = ax.bar(ind,errorWDistance,width,color='r')
+ax.set_title('Error at different distances %i Trials'%N,fontsize=16)
 ax.set_ylabel('Average error, cm')
 ax.set_xlabel('Distance (cm)')
 ax.set_xticklabels(distances)
 ax.set_xticks(np.arange(Ndistances), minor=False)
 plt.show()
 
-errorWDistanceRel=np.mean(np.abs(errorRoomAvg),axis=1) / distances * 100
+# Error as a function of angle
+errorWTrials = np.mean(np.abs(errorRoomAvg),axis=0)
+angles=[0,0,22.5,22.5,45,45,67.5,67.5,0,0,22.5,22.5,45,45,67.5,67.5,0,22.5,45,67.5]
+covered=[0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0]
+fig2 = plt.figure()
+plt.scatter(angles,errorWTrials)
+plt.title('Error With Angle')
 
-Ndistances = len(distances) # Number of distances
-ind = np.arange(Ndistances) # List of indices
+fig3 = plt.figure()
+plt.scatter(covered,errorWTrials)
+plt.title('Error of covered and non covered antenna')
+
+#%% Averaged bar charts - Angles
+indAngle = []
+for angle in angles:
+	indAngle.append(angle/22.5)
+angleLabels=['0','22.5','45','67.5']
+e1=[]
+e2=[]
+e3=[]
+e4=[]
+errorWAngle=[e1,e2,e3,e4]
+
+for i in range(len(indAngle)):
+	ind = int(indAngle[i])
+	val = errorWTrials[i]
+	errorWAngle[ind].append(val)
+
+erroravgWAngle = np.mean(errorWAngle,axis=1)
+
+Ndistances = len(erroravgWAngle)
+ind = np.arange(Ndistances)
 width = 0.5
 fig, ax = plt.subplots()
-rects1 = ax.bar(ind,errorWDistanceRel,width,color='r')
-ax.set_title('Percent Error at different distances %i Trials'%numTrials,fontsize=16)
-ax.set_ylabel('% error, cm')
-ax.set_xlabel('Distance (cm)')
-ax.set_xticklabels(distances)
+rects1 = ax.bar(ind,erroravgWAngle,width,color='r')
+ax.set_title('Error at different distances for %i Trials'%N,fontsize=16)
+ax.set_ylabel('Average error, cm')
+ax.set_xlabel('Angle')
+ax.set_xticklabels(angleLabels)
 ax.set_xticks(np.arange(Ndistances), minor=False)
 plt.show()
 
+#%% Obstruction: Covered vs Uncovered
 
+angleLabels=['Uncovered','Covered']
+e1=[]
+e2=[]
+errorWCover=[e1,e2]
 
-title = 'Absolute error as a function of distance'
-results, ind, ind2 = binPlot(realDistances,np.abs(errorAll),bins=8,title=title)
-boxPlot(results,np.abs(errorAll),title=title)
+for i in range(len(covered)):
+	ind = int(covered[i]) # flag for covered or not (covered=1)
+	val = errorWTrials[i] # Average value for that trial
+	errorWCover[ind].append(val)
 
-title = 'Relative error as a function of distance'
-results, ind, ind2 = binPlot(realDistances,np.abs(errorAllRel),bins=8,title=title)
-boxPlot(results,np.abs(errorAllRel),title=title)
+erroravgWCover=[]
+erroravgWCover.append(np.mean(errorWCover[0]))
+erroravgWCover.append(np.mean(errorWCover[1]))
 
+Ndistances = len(angleLabels)
+ind = np.arange(Ndistances)
+width = 0.5
+fig, ax = plt.subplots()
+rects1 = ax.bar(ind,erroravgWCover,width,color='r')
+ax.set_title('Covered and uncovered Antenna, for %i Trials'%N,fontsize=16)
+ax.set_ylabel('Average error, cm')
+ax.set_xlabel('Angle')
+ax.set_xticklabels(angleLabels)
+ax.set_xticks(np.arange(Ndistances), minor=False)
+plt.show()
 
+# Export results for BIOROB
+outputArray = np.array((errorWTrials,covered))
+np.savetxt('errorCovered.csv',np.transpose(outputArray),delimiter=',')
 
-##%% Effects of tag-anchor angle
-#
-## Write angles out as vector
-#erroravgWAngle = np.copy(errorRoomAvg)
-#
-#Ndistances = len(erroravgWAngle)
-#
-#ind = np.arange(Ndistances)
-#width = 0.5
-#fig, ax = plt.subplots()
-#rects1 = ax.scatter(angles,np.abs(erroravgWAngle),width,color='r')
-#ax.set_title('Error at different angles for %i Trials'%numTrials,fontsize=16)
-#ax.set_ylabel('Average error, cm')
-#ax.set_xlabel('Angle')
-##ax.set_xticklabels(angleLabels)
-##ax.set_xticks(np.arange(Ndistances), minor=False)
-#plt.show()
-#
-## Binned values
-#angles = np.reshape(angles,(len(angles),))
-##x = np.copy(angles)
-#
-## Function Staging
-#if erroravgWAngle.shape[1] > 1:
-#	y = np.reshape(erroravgWAngle,(len(angles),))
-#x = np.copy(angles)
-#
-#x,y = cleanNaN(x,y) # Remove NaN values
-#bins = 6
-#N = bins	
-#title = 'Absolute error (cm) as a function of angle'
-#results,ind,ind2 = binPlot(x,y,bins=bins,title=title) # Binned data, index midpoints, and index string names
-#boxPlot(results, y, title=title) # Box plot of results
-#
-##%% Angle effects, relative error
-#
-#y=[]
-#if erroravgWAngle.shape[1] > 1:
-#	y = np.reshape(erroravgWAngle,(len(angles),)) # Grab y values again
-#erroravgWAngleRel=[]
-#for i in range(len(y)):
-#	erroravgWAngleRel.append(float(y[i] / realDistances[i]))
-#y = erroravgWAngleRel
-#
-#x = angles
-#
-#x,y = cleanNaN(x,y) # Remove NaN values
-#bins = 6
-#N = bins	
-#title='Relative error as a function of angle'
-#results,ind,ind2 = binPlot(x,y,bins=bins,title=title) # Binned data, index midpoints, and index string names
-#fig,ax = boxPlot(results, y, title=title) # Box plot of results
-
+#%% Output for BIOROB
+# Create masks
+maskCovered = ()
+maskUncovered = ()
+for i in range(len(covered)):
+	if covered[i] == 1:
+		maskCovered = maskCovered + (i,)
+	else:
+		maskUncovered = maskUncovered + (i,)
+errorCovered = errorRoomAvg[:,maskCovered]
+errorUncovered = errorRoomAvg[:,maskUncovered]
+data = [[i for row in errorCovered for i in row],[i for row in errorUncovered for i in row]]
+dataOut = np.hstack((np.array(data[0]),np.array(data[1])))
+dataOut = np.reshape(dataOut,(len(dataOut),1))
+label=[1 for i in data[0]] + [0 for i in data[1]]
+dataLabel = np.array(label)
+dataLabel = np.reshape(dataLabel,(len(dataLabel),1))
+dataOut = np.hstack((dataOut,dataLabel))
+np.savetxt('errorCovered.csv',dataOut, delimiter = ',')

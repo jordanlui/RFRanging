@@ -302,21 +302,49 @@ dill.dump_session(filename)
 
 maskWiggle = (8,17,26,35) # Wiggle data
 maskStationary = (6,7,15,16,24,25,33,34) # Stationary 67 degrees
-errorWiggle = errorRoomAvgRel[:,maskWiggle]
-errorStationary67 = errorRoomAvgRel[:,maskStationary]
+errorWiggle = errorRoomAvg[:,maskWiggle]
+errorStationary67 = errorRoomAvg[:,maskStationary]
 
 print errorRoomAvg.shape, errorWiggle.shape, errorStationary67.shape
 print '\n Error Analysis between stationary and jitter data.'
-calcStats(np.abs(errorStationary67))
-calcStats(np.abs(errorWiggle))
+calcStats((errorStationary67))
+calcStats((errorWiggle))
 
-data = [[abs(i) for row in errorStationary67 for i in row],[abs(i) for row in errorWiggle for i in row]]
+data = [[i for row in errorStationary67 for i in row],[i for row in errorWiggle for i in row]]
 title = 'Relative error for stationary and jitter movements'
 fig,ax = plt.subplots()
 ax.boxplot((data),labels=['Stationary','Jitter'])
 ax.set_title(title)
 plt.show()
 
+# Plot for BIOROB
+dataOut = np.hstack((np.array(data[0]),np.array(data[1])))
+dataOut = np.reshape(dataOut,(len(dataOut),1))
+label=[1 for i in data[0]] + [0 for i in data[1]]
+
+#dataOut = np.hstack((dataOut,np.zeros((len(dataOut),1)) ))
+dataLabel = np.array(label)
+dataLabel = np.reshape(dataLabel,(len(dataLabel),1))
+dataOut = np.hstack((dataOut,dataLabel))
+np.savetxt('errorJitter.csv',dataOut, delimiter = ',')
+
+# Save relative error also
+errorWiggle = errorRoomAvgRel[:,maskWiggle]
+errorStationary67 = errorRoomAvgRel[:,maskStationary]
+
+data = [[i for row in errorStationary67 for i in row],[i for row in errorWiggle for i in row]]
+
+# Plot for BIOROB
+dataOut = np.hstack((np.array(data[0]),np.array(data[1])))
+dataOut = np.reshape(dataOut,(len(dataOut),1))
+label=[1 for i in data[0]] + [0 for i in data[1]]
+
+dataLabel = np.array(label)
+dataLabel = np.reshape(dataLabel,(len(dataLabel),1))
+dataOut = np.hstack((dataOut,dataLabel))
+np.savetxt('errorJitterRel.csv',dataOut, delimiter = ',')
+
+#%% Visualize the jitter data
 #  Nov 9 Data only
 maskWiggle = (8,17) # Wiggle data
 maskStationary = (6,7,15,16) # Stationary 67 degrees
